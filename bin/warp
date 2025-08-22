@@ -9,84 +9,190 @@ source "$WARP_DIR/src/core/config.sh"
 source "$WARP_DIR/src/core/logger.sh"
 source "$WARP_DIR/src/core/utils.sh"
 
+# Version info
+WARP_VERSION="1.0.0"
+
 # Command dispatcher
-case "$1" in
-    "quality"|"cq")
-        shift
-        "$WARP_DIR/src/quality/code-quality.sh" "$@"
-        ;;
-    "security"|"sec")
-        shift
-        "$WARP_DIR/src/security/security-check.sh" "$@"
-        ;;
-    "docs")
-        shift
-        "$WARP_DIR/src/docs/doc-generator.sh" "$@"
-        ;;
-    "git"|"gf")
-        shift
-        "$WARP_DIR/src/git-flow/git-flow.sh" "$@"
-        ;;
-    "github"|"gh")
-        shift
-        "$WARP_DIR/src/github/github-repo.sh" "$@"
-        ;;
-    "wordpress"|"wp")
-        shift
-        "$WARP_DIR/src/wordpress/wp-dev-env.sh" "$@"
-        ;;
-    "test-actions")
-        shift
-        "$WARP_DIR/src/git-flow/test-actions.sh" "$@"
-        ;;
-    "install")
-        "$WARP_DIR/scripts/install.sh"
-        ;;
-    "update")
-        "$WARP_DIR/scripts/update.sh"
-        ;;
-    "version"|"--version"|"-v")
-        cat "$WARP_DIR/VERSION"
-        ;;
-    "help"|"--help"|"-h"|"")
-        show_help
-        ;;
-    *)
-        echo "Unknown command: $1"
-        echo "Run 'warp help' for usage information."
+main() {
+    case "$1" in
+        "quality"|"cq")
+            shift
+            "$WARP_DIR/src/quality/code-quality.sh" "$@"
+            ;;
+        "security"|"sec")
+            shift
+            "$WARP_DIR/src/security/security-check.sh" "$@"
+            ;;
+        "docs")
+            shift
+            "$WARP_DIR/src/docs/doc-generator.sh" "$@"
+            ;;
+        "git"|"gf")
+            shift
+            "$WARP_DIR/src/git-flow/git-flow.sh" "$@"
+            ;;
+        "github"|"gh")
+            shift
+            "$WARP_DIR/src/github/github-repo.sh" "$@"
+            ;;
+        "wordpress"|"wp")
+            shift
+            "$WARP_DIR/src/wordpress/wp-dev-env.sh" "$@"
+            ;;
+        "test-actions")
+            shift
+            "$WARP_DIR/src/git-flow/test-actions.sh" "$@"
+            ;;
+        "workflow")
+            shift
+            run_workflow "$@"
+            ;;
+        "install")
+            "$WARP_DIR/scripts/install.sh"
+            ;;
+        "update")
+            "$WARP_DIR/scripts/update.sh"
+            ;;
+        "config")
+            shift
+            handle_config "$@"
+            ;;
+        "version"|"--version"|"-v")
+            echo "Warp v$WARP_VERSION"
+            ;;
+        "help"|"--help"|"-h"|"")
+            show_help
+            ;;
+        *)
+            log_error "Unknown command: $1"
+            echo "Run 'warp help' for usage information."
+            exit 1
+            ;;
+    esac
+}
+
+# Run workflow
+run_workflow() {
+    local workflow_name="$1"
+    
+    if [[ -z "$workflow_name" ]]; then
+        list_workflows
+        return 0
+    fi
+    
+    local workflow_file="$WARP_DIR/src/workflows/$workflow_name.yaml"
+    
+    if [[ ! -f "$workflow_file" ]]; then
+        log_error "Workflow not found: $workflow_name"
+        echo "Available workflows:"
+        list_workflows
         exit 1
-        ;;
-esac
+    fi
+    
+    # Extract and execute the command from YAML
+    log_info "Running workflow: $workflow_name"
+    
+    # Parse YAML and extract command (simple parsing)
+    local command=$(awk '/^command: \|/{flag=1; next} /^[^ ]/{flag=0} flag' "$workflow_file" | sed 's/^  //')
+    
+    if [[ -n "$command" ]]; then
+        eval "$command"
+    else
+        log_error "No command found in workflow: $workflow_name"
+        exit 1
+    fi
+}
+
+# List available workflows
+list_workflows() {
+    echo "Available workflows:"
+    echo
+    
+    for workflow in "$WARP_DIR/src/workflows"/*.yaml; do
+        if [[ -f "$workflow" ]]; then
+            local name=$(basename "$workflow" .yaml)
+            local description=$(grep "^description:" "$workflow" | cut -d':' -f2- | sed 's/^[[:space:]]*//' | tr -d '"')
+            
+            printf "  %-20s %s\n" "$name" "$description"
+        fi
+    done
+    
+    echo
+    echo "Usage: warp workflow <workflow-name>"
+}
+
+# Handle config commands
+handle_config() {
+    case "$1" in
+        "edit")
+            ${EDITOR:-nano} "$WARP_DIR/config/warp.conf"
+            ;;
+        "show")
+            cat "$WARP_DIR/config/warp.conf"
+            ;;
+        "reset")
+            cp "$WARP_DIR/config/warp.conf.default" "$WARP_DIR/config/warp.conf" 2>/dev/null || {
+                log_error "Default configuration not found"
+                exit 1
+            }
+            log_success "Configuration reset to defaults"
+            ;;
+        "path")
+            echo "$WARP_DIR/config/warp.conf"
+            ;;
+        *)
+            echo "Config commands: edit, show, reset, path"
+            ;;
+    esac
+}
 
 show_help() {
     cat << 'EOF'
-Warp - Development Productivity Toolkit
+🚀 Warp - Development Productivity Toolkit
 
 Usage: warp <command> [options]
 
-Commands:
-  quality, cq         Run code quality checks
-  security, sec       Run security analysis
+Core Commands:
+  quality, cq        Run code quality checks
+  security, sec      Run security analysis
   docs               Generate documentation
   git, gf            Git workflow management
   github, gh         GitHub repository management
   wordpress, wp      WordPress development environment
   test-actions       Test GitHub Actions locally
+  workflow           Run predefined workflows
   
+Management:
   install            Install Warp
   update             Update Warp
+  config             Manage configuration
   version            Show version
   help               Show this help
 
-Examples:
-  warp quality                    # Run code quality checks
-  warp security                   # Run security analysis
-  warp docs generate --website    # Generate documentation website
-  warp git feature my-feature     # Create feature branch
-  warp github new my-app python   # Create new Python project
-  warp wordpress plugin my-plugin # Setup WordPress plugin dev env
-  warp test-actions workflow ci.yml # Test GitHub Actions locally
+Workflows:
+  warp workflow                    # List available workflows
+  warp workflow create-project     # Interactive project creation
+  warp workflow quality-pipeline   # Run quality pipeline
+  warp workflow wordpress-setup    # WordPress development setup
+  warp workflow deploy-check       # Pre-deployment validation
 
-For more information, visit: https://github.com/user/warp
+Examples:
+  warp quality                       # Run code quality checks
+  warp security                      # Run security analysis
+  warp docs generate --website       # Generate documentation website
+  warp git feature my-feature        # Create feature branch
+  warp github new my-app python      # Create new Python project
+  warp wordpress plugin my-plugin    # Setup WordPress plugin dev env
+  warp test-actions workflow ci.yml  # Test GitHub Actions locally
+  warp workflow create-project       # Interactive project setup
+
+Configuration:
+  warp config edit                   # Edit configuration
+  warp config show                   # Show current configuration
+  warp config reset                  # Reset to defaults
+
+For more information: https://github.com/user/warp
 EOF
 }
+
+main "$@"
