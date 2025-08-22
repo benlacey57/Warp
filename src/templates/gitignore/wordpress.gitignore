@@ -1,0 +1,67 @@
+# WordPress Core
+/wp-admin/
+/wp-includes/
+/wp-content/index.php
+/wp-content/languages
+/wp-content/plugins/index.php
+/wp-content/themes/index.php
+
+# WordPress Config
+wp-config.php
+wp-config-local.php
+wp-config-production.php
+
+# WordPress Uploads
+/wp-content/uploads/
+
+# WordPress Cache
+/wp-content/cache/
+/wp-content/w3tc-config/
+
+# WordPress Plugins (if not developing them)
+/wp-content/plugins/
+!/wp-content/plugins/{{PROJECT_NAME}}/
+
+# WordPress Themes (if not developing them)
+/wp-content/themes/
+!/wp-content/themes/{{PROJECT_NAME}}/
+
+# WordPress Backup
+*.sql
+*.tar.gz
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build files
+/assets/dist/
+*.min.css
+*.min.js
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+/logs/
+
+# Docker
+.dockerignore
+
+# Warp specific
+.warp/
+code-quality-report.log
+security-report.log
