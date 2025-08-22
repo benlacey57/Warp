@@ -1,10 +1,10 @@
 #!/bin/bash
-# Warp Installation Script
+# Warp Installation Script - Core Implementation
 
 set -e
 
 WARP_DIR="$HOME/.warp"
-REPO_URL="https://github.com/benlacey57/warp.git"
+REPO_URL="https://github.com/user/warp.git"  # Update with actual repo
 INSTALL_PREFIX="/usr/local/bin"
 
 # Colors
@@ -26,8 +26,13 @@ check_prerequisites() {
     local missing=()
     
     command -v git >/dev/null || missing+=("git")
-    command -v curl >/dev/null || missing+=("curl")
-    command -v jq >/dev/null || missing+=("jq")
+    command -v docker >/dev/null || missing+=("docker")
+    
+    # Optional but recommended
+    if ! command -v gh >/dev/null; then
+        log_warning "GitHub CLI not found (recommended for repository management)"
+        log_info "Install with: brew install gh"
+    fi
     
     if [[ ${#missing[@]} -gt 0 ]]; then
         log_error "Missing required tools: ${missing[*]}"
@@ -36,8 +41,7 @@ check_prerequisites() {
         for tool in "${missing[@]}"; do
             case "$tool" in
                 "git") echo "  Git: https://git-scm.com/downloads" ;;
-                "curl") echo "  cURL: Usually pre-installed on most systems" ;;
-                "jq") echo "  jq: brew install jq (macOS) or apt-get install jq (Linux)" ;;
+                "docker") echo "  Docker: https://docs.docker.com/get-docker/" ;;
             esac
         done
         exit 1
@@ -50,22 +54,63 @@ check_prerequisites() {
 install_warp() {
     log_info "Installing Warp Development Toolkit..."
     
-    # Backup existing installation
-    if [[ -d "$WARP_DIR" ]]; then
-        log_warning "Existing Warp installation found. Creating backup..."
-        mv "$WARP_DIR" "$WARP_DIR.backup.$(date +%s)"
-    fi
+    # For now, copy the scripts we've created
+    # In a real scenario, this would clone from GitHub
     
-    # Clone repository
-    log_info "Cloning Warp repository..."
-    git clone --depth 1 "$REPO_URL" "$WARP_DIR"
+    # Create Warp directory structure
+    mkdir -p "$WARP_DIR"/{src/{core,quality,security,docs,git-flow,github,docker},config,scripts}
     
-    cd "$WARP_DIR"
+    # Copy core files (you'll need to have these files available)
+    log_info "Setting up Warp structure..."
     
-    # Set up permissions
-    log_info "Setting up permissions..."
-    find src/ bin/ scripts/ -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
-    chmod +x bin/warp
+    # Create a minimal working version
+    cat > "$WARP_DIR/bin/warp" << 'EOF'
+#!/bin/bash
+# Warp CLI - Core Implementation
+
+WARP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+case "$1" in
+    "github")
+        shift
+        "$WARP_DIR/src/github/github-repo.sh" "$@"
+        ;;
+    "quality")
+        shift
+        "$WARP_DIR/src/quality/code-quality.sh" "$@"
+        ;;
+    "security")
+        shift
+        "$WARP_DIR/src/security/security-check.sh" "$@"
+        ;;
+    "docker")
+        shift
+        "$WARP_DIR/src/docker/docker-dev.sh" "$@"
+        ;;
+    "version")
+        echo "Warp v1.0.0"
+        ;;
+    *)
+        echo "Warp Development Toolkit"
+        echo "Usage: warp <command> [options]"
+        echo
+        echo "Commands:"
+        echo "  github    - Repository management"
+        echo "  quality   - Code quality checks"
+        echo "  security  - Security analysis"
+        echo "  docker    - Development environments"
+        echo "  version   - Show version"
+        echo
+        echo "Examples:"
+        echo "  warp github new my-app python"
+        echo "  warp quality"
+        echo "  warp security"
+        echo "  warp docker setup"
+        ;;
+esac
+EOF
+    
+    chmod +x "$WARP_DIR/bin/warp"
     
     # Create system symlink
     log_info "Creating system symlink..."
@@ -75,68 +120,14 @@ install_warp() {
         sudo ln -sf "$WARP_DIR/bin/warp" "$INSTALL_PREFIX/warp"
     fi
     
-    # Setup configuration
-    setup_configuration
-    
-    # Setup shell integration
-    setup_shell_integration
-    
-    # Install optional dependencies
-    install_optional_dependencies
-    
-    # Setup WordPress development
-    setup_wordpress_development
+    # You'll need to copy the actual script files here
+    log_warning "Please copy the Warp scripts to $WARP_DIR/src/"
+    log_info "The scripts should be organized as shown in the documentation"
     
     log_success "Warp installed successfully!"
-    echo
-    log_info "Next steps:"
-    echo "  1. Restart your terminal or run: source ~/.zshrc (or ~/.bashrc)"
-    echo "  2. Run 'warp help' to see available commands"
-    echo "  3. Run 'warp config edit' to customize settings"
-    echo
-    log_info "Optional: Install additional tools for full functionality:"
-    echo "  • GitHub CLI: brew install gh"
-    echo "  • Docker: https://docs.docker.com/get-docker/"
-    echo "  • Act: brew install act"
 }
 
-setup_configuration() {
-    log_info "Setting up configuration..."
-    
-    # Create config directory
-    mkdir -p "$WARP_DIR/config"
-    
-    # Copy default configurations
-    cp "$WARP_DIR/config/warp.conf" "$WARP_DIR/config/warp.conf.default" 2>/dev/null || true
-    
-    # Create user config if it doesn't exist
-    local user_config="$HOME/.warp/config/user.conf"
-    if [[ ! -f "$user_config" ]]; then
-        mkdir -p "$(dirname "$user_config")"
-        cat > "$user_config" << 'EOF'
-# User-specific Warp configuration
-# Override default settings here
-
-# Personal information
-# WARP_USER_NAME="Your Name"
-# WARP_USER_EMAIL="your.email@example.com"
-
-# Preferred settings
-# WARP_DEBUG=false
-# WARP_LOG_LEVEL="info"
-
-# WordPress development
-# WP_DEV_PORT=8080
-# WP_DEV_AUTO_INSTALL=true
-
-# GitHub integration
-# GITHUB_AUTO_CREATE_PR=false
-EOF
-    fi
-    
-    log_success "Configuration setup complete"
-}
-
+# Setup shell integration
 setup_shell_integration() {
     log_info "Setting up shell integration..."
     
@@ -144,16 +135,14 @@ setup_shell_integration() {
     case "$SHELL" in
         */zsh) shell_file="$HOME/.zshrc" ;;
         */bash) shell_file="$HOME/.bashrc" ;;
-        */fish) shell_file="$HOME/.config/fish/config.fish" ;;
         *) 
             log_warning "Unsupported shell: $SHELL"
             return 0
             ;;
     esac
     
-    # Add Warp to PATH and aliases
     if [[ -n "$shell_file" ]] && ! grep -q "# Warp Development Toolkit" "$shell_file" 2>/dev/null; then
-        log_info "Adding Warp integration to $shell_file..."
+        log_info "Adding Warp aliases to $shell_file..."
         
         cat >> "$shell_file" << 'EOF'
 
@@ -163,203 +152,46 @@ export PATH="$PATH:$HOME/.warp/bin"
 # Warp aliases
 alias cq="warp quality"
 alias sec="warp security"
-alias docs="warp docs"
-alias gf="warp git"
 alias gh-new="warp github new"
-alias wp-dev="warp wordpress"
 
-# WordPress development
-alias wp-plugin="warp wordpress plugin"
-alias wp-theme="warp wordpress theme"
-alias wp-start="cd ~/.warp/wordpress-dev && find . -name '*-dev.sh' -exec {} start \;"
-alias wp-stop="cd ~/.warp/wordpress-dev && find . -name '*-dev.sh' -exec {} stop \;"
-
-# Quality and security
-alias check-all="warp quality && warp security"
-alias check-quick="warp quality --quick && warp security --quick"
-
-# Documentation
-alias docs-gen="warp docs generate --website"
-alias docs-serve="warp docs serve"
-
-# Git workflow
-alias gfs="warp git status"
-alias gfc="warp git commit"
-alias gfp="warp git pr"
-alias gff="warp git finish"
-
-# Project creation shortcuts
+# Quick project creation
 new-python() { warp github new "$1" python "$2"; }
-new-node() { warp github new "$1" javascript "$2"; }
-new-laravel() { warp github new "$1" laravel-api "$2"; }
+new-js() { warp github new "$1" javascript "$2"; }
 new-wp-plugin() { warp github new "$1" wordpress-plugin "$2"; }
-new-wp-theme() { warp github new "$1" wordpress-theme "$2"; }
 
-# Full project setup with quality checks
-full-setup() {
+# Full development setup
+dev-setup() {
     warp github new "$1" "$2" "$3" &&
     cd "$1" &&
+    warp docker setup &&
     warp quality &&
     warp security &&
-    warp docs generate --website &&
-    echo "✅ Project '$1' fully set up!"
+    echo "🎉 Project '$1' ready for development!"
 }
 EOF
         
         log_success "Shell integration added to $shell_file"
+        log_info "Restart your terminal or run: source $shell_file"
+    fi
+}
+
+# Test installation
+test_installation() {
+    log_info "Testing Warp installation..."
+    
+    if command -v warp >/dev/null; then
+        log_success "Warp command available"
+        
+        # Test version
+        if warp version >/dev/null 2>&1; then
+            log_success "Warp version command works"
+        else
+            log_warning "Warp version command failed"
+        fi
     else
-        log_info "Shell integration already exists or unsupported shell"
+        log_error "Warp command not found in PATH"
+        exit 1
     fi
-}
-
-install_optional_dependencies() {
-    log_info "Installing optional dependencies..."
-    
-    local os_type=$(uname -s | tr '[:upper:]' '[:lower:]')
-    
-    # GitHub CLI
-    if ! command -v gh >/dev/null; then
-        log_info "Installing GitHub CLI..."
-        case "$os_type" in
-            "darwin")
-                if command -v brew >/dev/null; then
-                    brew install gh 2>/dev/null || log_warning "Failed to install GitHub CLI with brew"
-                else
-                    log_warning "Homebrew not found. Please install GitHub CLI manually"
-                fi
-                ;;
-            "linux")
-                if command -v apt-get >/dev/null; then
-                    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-                    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-                    sudo apt update && sudo apt install gh 2>/dev/null || log_warning "Failed to install GitHub CLI with apt"
-                else
-                    log_warning "Please install GitHub CLI manually: https://cli.github.com/"
-                fi
-                ;;
-            *)
-                log_warning "Unsupported OS for automatic GitHub CLI installation"
-                ;;
-        esac
-    fi
-    
-    # Act (GitHub Actions runner)
-    if ! command -v act >/dev/null; then
-        log_info "Installing Act..."
-        case "$os_type" in
-            "darwin")
-                if command -v brew >/dev/null; then
-                    brew install act 2>/dev/null || log_warning "Failed to install Act with brew"
-                fi
-                ;;
-            "linux")
-                curl https://raw.githubusercontent.com/nektos/act/master/install.sh | bash 2>/dev/null || log_warning "Failed to install Act"
-                ;;
-        esac
-    fi
-    
-    # Development tools
-    log_info "Checking development tools..."
-    
-    local tools_to_check=("docker" "docker-compose" "node" "npm" "python3" "pip3" "php" "composer")
-    local missing_tools=()
-    
-    for tool in "${tools_to_check[@]}"; do
-        if ! command -v "$tool" >/dev/null; then
-            missing_tools+=("$tool")
-        fi
-    done
-    
-    if [[ ${#missing_tools[@]} -gt 0 ]]; then
-        log_warning "Optional tools not found: ${missing_tools[*]}"
-        echo "These tools are recommended for full functionality:"
-        echo "  • Docker & Docker Compose: https://docs.docker.com/get-docker/"
-        echo "  • Node.js & npm: https://nodejs.org/"
-        echo "  • Python 3 & pip: https://python.org/"
-        echo "  • PHP & Composer: https://php.net/ & https://getcomposer.org/"
-    fi
-}
-
-setup_wordpress_development() {
-    log_info "Setting up WordPress development environment..."
-    
-    # Create WordPress development directory
-    mkdir -p "$HOME/.warp/wordpress-dev"
-    
-    # Copy WordPress development templates
-    if [[ -d "$WARP_DIR/src/wordpress/templates" ]]; then
-        cp -r "$WARP_DIR/src/wordpress/templates"/* "$HOME/.warp/wordpress-dev/" 2>/dev/null || true
-    fi
-    
-    # Create WordPress development helper script
-    cat > "$HOME/.warp/wordpress-dev/wp-helper.sh" << 'EOF'
-#!/bin/bash
-# WordPress Development Helper
-# 
-# List all WordPress development environments
-list() {
-    echo "🔍 WordPress Development Environments:"
-    echo
-    find . -maxdepth 2 -name "*-dev.sh" -type f | while read -r script; do
-        local dir=$(dirname "$script")
-        local name=$(basename "$dir")
-        local type="unknown"
-        
-        if [[ -f "$dir/docker-compose.yml" ]]; then
-            if grep -q "wp-content/plugins" "$dir/docker-compose.yml"; then
-                type="plugin"
-            elif grep -q "wp-content/themes" "$dir/docker-compose.yml"; then
-                type="theme"
-            fi
-        fi
-        
-        echo "  📂 $name ($type)"
-        echo "     Script: $script"
-        echo "     Directory: $dir"
-        echo
-    done
-}
-
-# Start all environments
-start_all() {
-    echo "🚀 Starting all WordPress environments..."
-    find . -maxdepth 2 -name "*-dev.sh" -type f -exec {} start \;
-}
-
-# Stop all environments
-stop_all() {
-    echo "🛑 Stopping all WordPress environments..."
-    find . -maxdepth 2 -name "*-dev.sh" -type f -exec {} stop \;
-}
-
-# Clean all environments
-clean_all() {
-    echo "🧹 Cleaning all WordPress environments..."
-    docker system prune -f
-    docker volume prune -f
-}
-
-case "$1" in
-    "list") list ;;
-    "start") start_all ;;
-    "stop") stop_all ;;
-    "clean") clean_all ;;
-    *)
-        echo "WordPress Development Helper"
-        echo "Usage: $0 {list|start|stop|clean}"
-        echo
-        echo "Commands:"
-        echo "  list   - List all WordPress development environments"
-        echo "  start  - Start all WordPress environments"
-        echo "  stop   - Stop all WordPress environments"
-        echo "  clean  - Clean Docker resources"
-        ;;
-esac
-EOF
-    
-    chmod +x "$HOME/.warp/wordpress-dev/wp-helper.sh"
-    
-    log_success "WordPress development environment ready"
 }
 
 # Main installation
@@ -371,14 +203,22 @@ main() {
     
     check_prerequisites
     install_warp
+    setup_shell_integration
+    test_installation
     
     echo
     echo "🎉 Installation complete!"
     echo
-    echo "Get started with:"
-    echo "  warp help              # Show all commands"
-    echo "  warp config edit       # Edit configuration"
-    echo "  warp github new my-app python  # Create new project"
+    echo "📋 Next steps:"
+    echo "1. Copy the Warp scripts to $WARP_DIR/src/"
+    echo "2. Restart your terminal or run: source ~/.zshrc"
+    echo "3. Test with: warp version"
+    echo "4. Create your first project: warp github new my-app python"
+    echo
+    echo "🔧 Recommended setup:"
+    echo "• Install GitHub CLI: brew install gh && gh auth login"
+    echo "• Install development tools: pip install black flake8 pytest bandit"
+    echo "• Install Node.js tools: npm install -g eslint prettier"
     echo
 }
 
