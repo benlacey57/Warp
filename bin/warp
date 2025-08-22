@@ -1,0 +1,92 @@
+#!/bin/bash
+# Main Warp CLI entry point
+
+WARP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+export WARP_DIR
+
+# Load core utilities
+source "$WARP_DIR/src/core/config.sh"
+source "$WARP_DIR/src/core/logger.sh"
+source "$WARP_DIR/src/core/utils.sh"
+
+# Command dispatcher
+case "$1" in
+    "quality"|"cq")
+        shift
+        "$WARP_DIR/src/quality/code-quality.sh" "$@"
+        ;;
+    "security"|"sec")
+        shift
+        "$WARP_DIR/src/security/security-check.sh" "$@"
+        ;;
+    "docs")
+        shift
+        "$WARP_DIR/src/docs/doc-generator.sh" "$@"
+        ;;
+    "git"|"gf")
+        shift
+        "$WARP_DIR/src/git-flow/git-flow.sh" "$@"
+        ;;
+    "github"|"gh")
+        shift
+        "$WARP_DIR/src/github/github-repo.sh" "$@"
+        ;;
+    "wordpress"|"wp")
+        shift
+        "$WARP_DIR/src/wordpress/wp-dev-env.sh" "$@"
+        ;;
+    "test-actions")
+        shift
+        "$WARP_DIR/src/git-flow/test-actions.sh" "$@"
+        ;;
+    "install")
+        "$WARP_DIR/scripts/install.sh"
+        ;;
+    "update")
+        "$WARP_DIR/scripts/update.sh"
+        ;;
+    "version"|"--version"|"-v")
+        cat "$WARP_DIR/VERSION"
+        ;;
+    "help"|"--help"|"-h"|"")
+        show_help
+        ;;
+    *)
+        echo "Unknown command: $1"
+        echo "Run 'warp help' for usage information."
+        exit 1
+        ;;
+esac
+
+show_help() {
+    cat << 'EOF'
+Warp - Development Productivity Toolkit
+
+Usage: warp <command> [options]
+
+Commands:
+  quality, cq         Run code quality checks
+  security, sec       Run security analysis
+  docs               Generate documentation
+  git, gf            Git workflow management
+  github, gh         GitHub repository management
+  wordpress, wp      WordPress development environment
+  test-actions       Test GitHub Actions locally
+  
+  install            Install Warp
+  update             Update Warp
+  version            Show version
+  help               Show this help
+
+Examples:
+  warp quality                    # Run code quality checks
+  warp security                   # Run security analysis
+  warp docs generate --website    # Generate documentation website
+  warp git feature my-feature     # Create feature branch
+  warp github new my-app python   # Create new Python project
+  warp wordpress plugin my-plugin # Setup WordPress plugin dev env
+  warp test-actions workflow ci.yml # Test GitHub Actions locally
+
+For more information, visit: https://github.com/user/warp
+EOF
+}
