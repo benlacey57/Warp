@@ -1,0 +1,25 @@
+# {{PROJECT_NAME}}
+
+{{PROJECT_DESCRIPTION}}
+
+## Description
+
+{{PROJECT_DESCRIPTION}}
+
+## Installation
+
+### Prerequisites
+
+{{INSTALLATION_PREREQUISITES}}
+
+### Setup
+
+```bash
+{{INSTALLATION_COMMANDS}}Usage{{USAGE_EXAMPLES}}Features{{FEATURE_LIST}}Configuration{{CONFIGURATION_DETAILS}}DevelopmentSetup Development Environment{{DEV_SETUP_COMMANDS}}Running Tests{{TEST_COMMANDS}}Code Quality# Run quality checks
+warp quality
+
+# Run security checks  
+warp security
+
+# Generate documentation
+warp docs generateAPI Reference{{API_DOCUMENTATION}}ContributingPlease read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.Development WorkflowFork the repositoryCreate a feature branch (git checkout -b feature/amazing-feature)Make your changesRun tests and quality checksCommit your changes (git commit -m 'Add amazing feature')Push to the branch (git push origin feature/amazing-feature)Open a Pull RequestTesting{{TESTING_INFORMATION}}Deployment{{DEPLOYMENT_INSTRUCTIONS}}ChangelogSee CHANGELOG.md for a list of changes.LicenseThis project is licensed under the {{LICENSE}} License - see the LICENSE file for details.Support{{SUPPORT_INFORMATION}}AcknowledgmentsCreated with Warp Development Toolkit{{ADDITIONAL_ACKNOWLEDGMENTS}}
