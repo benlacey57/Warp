@@ -1,0 +1,76 @@
+services:
+  wordpress:
+    image: wordpress:latest
+    ports:
+      - "8080:80"
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: {{PROJECT_NAME}}
+      WORDPRESS_DEBUG: 1
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_DEBUG', true);
+        define('WP_DEBUG_LOG', true);
+        define('WP_DEBUG_DISPLAY', false);
+        define('SCRIPT_DEBUG', true);
+    volumes:
+      - wordpress_data:/var/www/html
+      - {{PROJECT_ROOT}}:/var/www/html/wp-content/plugins/{{PROJECT_NAME}}
+      - ./wp-config-extra.php:/var/www/html/wp-config-extra.php
+    depends_on:
+      - db
+    networks:
+      - wordpress-network
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: {{PROJECT_NAME}}
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    networks:
+      - wordpress-network
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: db
+      PMA_USER: wordpress
+      PMA_PASSWORD: wordpress
+    depends_on:
+      - db
+    networks:
+      - wordpress-network
+
+  wp-cli:
+    image: wordpress:cli
+    volumes:
+      - wordpress_data:/var/www/html
+      - {{PROJECT_ROOT}}:/var/www/html/wp-content/plugins/{{PROJECT_NAME}}
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: {{PROJECT_NAME}}
+    depends_on:
+      - db
+      - wordpress
+    networks:
+      - wordpress-network
+
+volumes:
+  wordpress_data:
+  db_data:
+
+networks:
+  wordpress-network:
+    driver: bridge
