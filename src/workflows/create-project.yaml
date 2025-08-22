@@ -1,0 +1,181 @@
+name: "Create New Project"
+description: "Interactive project creation with full setup"
+command: |
+  #!/bin/bash
+  
+  # Load Warp utilities
+  source "$WARP_DIR/src/core/logger.sh"
+  source "$WARP_DIR/src/core/utils.sh"
+  source "$WARP_DIR/src/core/template-manager.sh"
+  
+  echo "🚀 Welcome to Warp Project Creator!"
+  echo "=================================="
+  echo
+  
+  # Project details
+  read -p "📝 Project name: " PROJECT_NAME
+  
+  # Validate project name
+  validate_project_name "$PROJECT_NAME" || exit 1
+  
+  echo
+  echo "📋 Available project types:"
+  echo "  1. Python application"
+  echo "  2. JavaScript/Node.js application"
+  echo "  3. PHP application"
+  echo "  4. Laravel API"
+  echo "  5. Laravel Admin (Filament)"
+  echo "  6. WordPress Plugin"
+  echo "  7. WordPress Theme"
+  echo "  8. Docker application"
+  echo
+  
+  read -p "🎯 Select project type (1-8): " PROJECT_TYPE_NUM
+  
+  case "$PROJECT_TYPE_NUM" in
+    1) PROJECT_TYPE="python" ;;
+    2) PROJECT_TYPE="javascript" ;;
+    3) PROJECT_TYPE="php" ;;
+    4) PROJECT_TYPE="laravel-api" ;;
+    5) PROJECT_TYPE="laravel-admin" ;;
+    6) PROJECT_TYPE="wordpress-plugin" ;;
+    7) PROJECT_TYPE="wordpress-theme" ;;
+    8) PROJECT_TYPE="docker" ;;
+    *) log_error "Invalid selection"; exit 1 ;;
+  esac
+  
+  read -p "📄 Project description: " PROJECT_DESC
+  read -p "👤 Author name [$USER]: " AUTHOR_NAME
+  AUTHOR_NAME=${AUTHOR_NAME:-$USER}
+  
+  echo
+  read -p "🔒 Make repository private? [y/N]: " PRIVATE
+  if [[ "$PRIVATE" =~ ^[Yy]$ ]]; then
+    PRIVATE_FLAG="true"
+  else
+    PRIVATE_FLAG="false"
+  fi
+  
+  echo
+  read -p "🏗️  Setup development environment? [Y/n]: " SETUP_ENV
+  SETUP_ENV=${SETUP_ENV:-y}
+  
+  echo
+  read -p "🔍 Run quality checks after setup? [Y/n]: " RUN_QUALITY
+  RUN_QUALITY=${RUN_QUALITY:-y}
+  
+  echo
+  read -p "📖 Generate documentation? [Y/n]: " GEN_DOCS
+  GEN_DOCS=${GEN_DOCS:-y}
+  
+  echo
+  echo "🎯 Project Summary:"
+  echo "  Name: $PROJECT_NAME"
+  echo "  Type: $PROJECT_TYPE"
+  echo "  Description: $PROJECT_DESC"
+  echo "  Author: $AUTHOR_NAME"
+  echo "  Private: $PRIVATE_FLAG"
+  echo "  Setup environment: $SETUP_ENV"
+  echo "  Run quality checks: $RUN_QUALITY"
+  echo "  Generate docs: $GEN_DOCS"
+  echo
+  
+  if ! confirm "Proceed with project creation?"; then
+    echo "Project creation cancelled."
+    exit 0
+  fi
+  
+  echo
+  echo "🚀 Creating project..."
+  
+  # Generate template variables
+  TEMP_VARS=$(mktemp)
+  generate_project_variables "$PROJECT_NAME" "$PROJECT_TYPE" "$AUTHOR_NAME" "$TEMP_VARS"
+  
+  # Create project
+  warp github new "$PROJECT_NAME" "$PROJECT_TYPE" "$PROJECT_DESC" "$PRIVATE_FLAG"
+  
+  if [[ $? -ne 0 ]]; then
+    log_error "Failed to create project"
+    exit 1
+  fi
+  
+  cd "$PROJECT_NAME"
+  
+  # Process project templates
+  TEMPLATE_DIR=$(get_template_path "project" "$PROJECT_TYPE")
+  if [[ -d "$TEMPLATE_DIR" ]]; then
+    log_info "Processing project templates..."
+    copy_template_dir "$TEMPLATE_DIR" "." "$TEMP_VARS"
+  fi
+  
+  # Setup development environment
+  if [[ "$SETUP_ENV" =~ ^[Yy]$ ]]; then
+    echo "🏗️  Setting up development environment..."
+    
+    case "$PROJECT_TYPE" in
+      "wordpress-plugin")
+        warp wordpress plugin "$PROJECT_NAME"
+        ;;
+      "wordpress-theme")
+        warp wordpress theme "$PROJECT_NAME"
+        ;;
+      "laravel-api"|"laravel-admin")
+        echo "📦 Run './install-laravel.sh' to complete Laravel setup"
+        ;;
+    esac
+  fi
+  
+  # Run quality checks
+  if [[ "$RUN_QUALITY" =~ ^[Yy]$ ]]; then
+    echo "🔍 Running quality checks..."
+    warp quality || echo "⚠️  Quality checks completed with warnings"
+    
+    echo "🔒 Running security checks..."
+    warp security || echo "⚠️  Security checks completed with warnings"
+  fi
+  
+  # Generate documentation
+  if [[ "$GEN_DOCS" =~ ^[Yy]$ ]]; then
+    echo "📖 Generating documentation..."
+    warp docs generate --website
+  fi
+  
+  # Cleanup
+  rm -f "$TEMP_VARS"
+  
+  echo
+  echo "🎉 Project '$PROJECT_NAME' created successfully!"
+  echo
+  echo "📁 Project location: $(pwd)"
+  echo
+  echo "🚀 Next steps:"
+  case "$PROJECT_TYPE" in
+    "python")
+      echo "  1. Activate virtual environment: source venv/bin/activate"
+      echo "  2. Install dependencies: pip install -r requirements.txt"
+      echo "  3. Run tests: pytest"
+      ;;
+    "javascript")
+      echo "  1. Install dependencies: npm install"
+      echo "  2. Start development server: npm run dev"
+      echo "  3. Run tests: npm test"
+      ;;
+    "laravel-api"|"laravel-admin")
+      echo "  1. Run Laravel setup: ./install-laravel.sh"
+      echo "  2. Start containers: docker-compose up -d"
+      echo "  3. Access application: http://localhost:8000"
+      ;;
+    "wordpress-plugin"|"wordpress-theme")
+      echo "  1. Start WordPress: ./$(echo $PROJECT_TYPE | sed 's/-//g')-dev.sh start"
+      echo "  2. Access WordPress: http://localhost:8080"
+      echo "  3. Admin login: admin/admin"
+      ;;
+  esac
+  
+  echo
+  echo "💡 Useful commands:"
+  echo "  warp quality     # Run code quality checks"
+  echo "  warp security    # Run security analysis"
+  echo "  warp docs serve  # Serve documentation locally"
+  echo "  warp git status  # Enhanced git status"
