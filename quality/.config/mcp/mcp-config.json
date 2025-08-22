@@ -1,0 +1,19 @@
+{
+  "servers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-filesystem", "/path/to/your/projects"],
+      "env": {}
+    },
+    "git": {
+      "command": "npx", 
+      "args": ["@modelcontextprotocol/server-git"],
+      "env": {}
+    },
+    "docker": {
+      "command": "npx",
+      "args": ["@modelcontextprotocol/server-docker"],
+      "env": {}
+    }
+  }
+}
